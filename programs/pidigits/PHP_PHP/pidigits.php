@@ -1,116 +1,41 @@
 <?php
-/* The Computer Language Benchmarks Game
-   http://benchmarksgame.alioth.debian.org/
-   
-   contributed by Isaac Gouy 
-*/
+/**
+ * The Computer Language Benchmarks Game
+ * http://benchmarksgame.alioth.debian.org/
+ * 
+ * transliterated from Mike Pall'$s Lua program
+ * contributed by Mario Pernici
+ */
 
-
-class Transformation {
-   var $q, $r, $s, $t, $k;
-
-   function Transformation($q, $r, $s, $t){
-      $this->q = $q;
-      $this->r = $r;      
-      $this->s = $s;
-      $this->t = $t;               
-   }
-   
-   function Unity(){
-      return new Transformation("1", "0", "0", "1");              
-   }   
-   
-   function Zero(){
-      return new Transformation("0", "0", "0", "0");              
-   }      
-   
-      
-   function Compose($a){
-      $qq = bcmul($this->q, $a->q);
-      $qrrt = bcadd(bcmul($this->q, $a->r), bcmul($this->r, $a->t));
-      $sqts = bcadd(bcmul($this->s, $a->q), bcmul($this->t, $a->s));
-      $srtt = bcadd(bcmul($this->s, $a->r), bcmul($this->t, $a->t));   
-      return new Transformation($qq, $qrrt, $sqts, $srtt);
-   }
-   
-   function Extract($j){
-      $bigj = strval($j);
-      $qjr = bcadd(bcmul($this->q, $bigj), $this->r);
-      $sjt = bcadd(bcmul($this->s, $bigj), $this->t);
-      $d = bcdiv($qjr, $sjt);
-      return floor($d);
-   }
-      
-   function Next(){ 
-      $this->k = $this->k + 1;
-      $this->q = strval($this->k);
-      $this->r = strval(4*$this->k + 2);
-      $this->s = "0";
-      $this->t = strval(2*$this->k + 1);
-      return $this;      
-   }                
+if(isset($argv[1]) && is_numeric($argv[1])) {
+  $last = (int) $argv[1];
+} else {
+  $last = 100;
 }
 
-
-
-class PiDigitStream {
-   var $z, $x, $inverse;
-
-   function PiDigitStream(){
-      $this->z = Transformation::Unity();
-      $this->x = Transformation::Zero();      
-      $this->inverse = Transformation::Zero();   
-   }
-   
-   function Produce($j){
-      $i = $this->inverse;
-      $i->q = "10";
-      $i->r = strval(-10*$j);
-      $i->s = "0";
-      $i->t = "1";
-      return $i->Compose($this->z);
-   }   
-
-   function Consume($a){
-      return $this->z ->Compose($a);  
-   }
-   
-   function Digit(){
-      return $this->z ->Extract(3);  
-   }  
-   
-   function IsSafe($j){
-      return $j == ($this->z ->Extract(4));  
-   }    
-
-   function Next(){
-      $y = $this->Digit();
-      if ($this->IsSafe($y)){
-         $this->z = $this->Produce($y);
-         return $y;
-      } else {
-         $this->z = $this->Consume($this->x ->Next());
-         return $this->Next();      
+$i = $k = $ns = 0;
+$k1 = 1;
+[$n,$a,$d,$t,$u] = [1,0,1,0,0];
+while ($i!=$last) {
+  $k = gmp_add($k, 1);
+  $t = gmp_mul($n, 2);
+  $n = gmp_mul($n, $k);
+  $a = gmp_add($a, $t);
+  $k1 = gmp_add($k1, 2);
+  $a = gmp_mul($a, $k1);
+  $d = gmp_mul($d, $k1);
+  if (gmp_cmp($a, $n)!=-1) {
+    [$t, $u] = gmp_div_qr(gmp_add(gmp_mul($n, 3), $a), $d);
+    $u = gmp_add($u, $n);
+    if ($d > $u) {
+      $ns = gmp_add(gmp_mul($ns, 10), $t);
+      if ((++$i % 10) == 0) {
+        printf("%s\t:%d%s", str_pad(gmp_strval($ns), 10, '0'), $i, PHP_EOL);
+        $ns = 0;
       }
-   } 
-}
-
-
-$n = $argv[1];
-$i = 0;
-$length = 10;
-$pidigit = new PiDigitStream;
-
-while ($n > 0){
-   if ($n < $length){
-      for ($j=0; $j<$n; $j++) printf("%d",$pidigit->Next());
-      for ($j=$n; $j<$length; $j++)  print " ";
-      $i += $n;
-   } else {
-      for ($j=0; $j<$length; $j++) printf("%d",$pidigit->Next());
-      $i += $length;   
+      $a = gmp_sub($a, gmp_mul($d, $t));
+      $a = gmp_mul($a, 10);
+      $n = gmp_mul($n, 10);
+      }
    }
-   print "\t:$i\n";
-   $n -= $length;
 }
-?>
